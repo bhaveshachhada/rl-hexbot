@@ -175,8 +175,14 @@ class Solver:
     # TODO: Add any additional methods here
     #
     #
-    def pi_compute_state_values(self):
-        pass
+    def pi_compute_state_value(self, state: State):
+        if state not in self.terminal_states:
+            values = list()
+            for action in ROBOT_ACTIONS:
+                reward, next_state = self.environment.apply_dynamics(state, action)
+                value = reward + (self.environment.gamma * self.state_value[next_state])
+                values.append(value)
+            self.state_value[state] = max(values)
 
     def pi_evaluate(self, max_iter=1000):
         pass
