@@ -9,6 +9,7 @@ import numpy as np
 from constants import *
 from environment import *
 from state import State
+
 """
 solution.py
 
@@ -31,7 +32,7 @@ class Solver:
         self.state_value: Dict[State, float] = None
         self.new_state_value: Dict[State, float] = None
         self.possible_states = self.get_all_states()
-
+        self.terminal_states = self.get_terminal_states()
     # === Value Iteration ==============================================================================================
 
     def vi_initialise(self):
@@ -117,7 +118,7 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        self.policy = defaultdict(lambda: np.random.choice(ROBOT_ACTIONS))
+        self.policy = defaultdict(lambda: FORWARD)
         self.state_value = defaultdict(float)
         self.new_state_value = defaultdict(lambda: math.inf)
 
@@ -166,7 +167,7 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        return self.policy[state]
 
     # === Helper Methods ===============================================================================================
     #
@@ -205,3 +206,6 @@ class Solver:
                     fringe.add(next_state)
 
         return list(states)
+
+    def get_terminal_states(self) -> List[State]:
+        return [state for state in self.possible_states if self.environment.is_solved(state)]
