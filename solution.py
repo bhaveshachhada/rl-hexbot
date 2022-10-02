@@ -1,3 +1,4 @@
+import math
 import sys
 import time
 from collections import defaultdict
@@ -118,7 +119,7 @@ class Solver:
         #
         self.policy = defaultdict(lambda: np.random.choice(ROBOT_ACTIONS))
         self.state_value = defaultdict(float)
-        self.new_state_value = defaultdict(float)
+        self.new_state_value = defaultdict(lambda: math.inf)
 
     def pi_is_converged(self):
         """
