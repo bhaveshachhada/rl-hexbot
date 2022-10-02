@@ -1,5 +1,10 @@
 import sys
 import time
+from collections import defaultdict
+from typing import Dict, List
+
+import numpy as np
+
 from constants import *
 from environment import *
 from state import State
@@ -21,7 +26,10 @@ class Solver:
         #
         # TODO: Define any class instance variables you require (e.g. dictionary mapping state to VI value) here.
         #
-        pass
+        self.policy: Dict[State, int] = None
+        self.state_value: Dict[State, float] = None
+        self.new_state_value: Dict[State, float] = None
+        self.possible_states = self.get_all_states()
 
     # === Value Iteration ==============================================================================================
 
@@ -108,7 +116,9 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        self.policy = defaultdict(lambda: np.random.choice(ROBOT_ACTIONS))
+        self.state_value = defaultdict(float)
+        self.new_state_value = defaultdict(float)
 
     def pi_is_converged(self):
         """
@@ -120,7 +130,7 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        return max(self.new_state_value[s] - self.state_value[s] for s in self.new_state_value.keys()) <= 0.001
 
     def pi_iteration(self):
         """
@@ -132,7 +142,8 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        self.pi_evaluate()
+        self.pi_improvise()
 
     def pi_plan_offline(self):
         """
@@ -162,4 +173,34 @@ class Solver:
     # TODO: Add any additional methods here
     #
     #
+    def pi_compute_state_values(self):
+        pass
 
+    def pi_evaluate(self, max_iter=1000):
+        pass
+
+    def pi_improvise(self):
+        pass
+
+    def get_all_states(self) -> List[State]:
+        """
+        returns list of all possible states in the environment
+        :return:
+        """
+        states = set()
+        initial = self.environment.get_init_state()
+        fringe = {initial}
+
+        while fringe:
+
+            current = fringe.pop()
+            states.add(current)
+
+            for action in ROBOT_ACTIONS:
+                reward, next_state = self.environment.apply_dynamics(current, action)
+
+                if next_state not in states:
+                    states.add(next_state)
+                    fringe.add(next_state)
+
+        return list(states)
