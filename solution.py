@@ -264,7 +264,11 @@ class Solver:
 
     def calculate_state_transition_probabilities(self):
         for state in self.possible_states:
+            self.state_transition_probability[state] = dict()
             for action in ROBOT_ACTIONS:
+
+                action_outcome_probability = dict()
+
                 total_probability = 1.0
                 probability_double_move = self.environment.double_move_probs[action]
                 probability_cw = self.environment.drift_cw_probs[action]
@@ -304,9 +308,9 @@ class Solver:
                         self.environment.apply_dynamics(state, SPIN_LEFT)[1], action)[1],
                     action)
 
-                self.state_transition_probability[state][correct_state] = probability_correct_move
-                self.state_transition_probability[state][drift_cw] = probability_cw
-                self.state_transition_probability[state][drift_ccw] = probability_ccw
-                self.state_transition_probability[state][double_move] = probability_double_move
-                self.state_transition_probability[state][cw_and_double] = probability_cw_and_double
-                self.state_transition_probability[state][ccw_and_double] = probability_ccw_and_double
+                self.state_transition_probability[state][action][correct_state] = probability_correct_move
+                self.state_transition_probability[state][action][drift_cw] = probability_cw
+                self.state_transition_probability[state][action][drift_ccw] = probability_ccw
+                self.state_transition_probability[state][action][double_move] = probability_double_move
+                self.state_transition_probability[state][action][cw_and_double] = probability_cw_and_double
+                self.state_transition_probability[state][action][ccw_and_double] = probability_ccw_and_double
