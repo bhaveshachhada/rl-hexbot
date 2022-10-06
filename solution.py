@@ -33,6 +33,7 @@ class Solver:
         self.state_value: Dict[State, float] = None
         self.new_state_value: Dict[State, float] = None
         self.state_transition_probability = None
+        self.state_rewards = None
         self.possible_states = self.get_all_states()
         self.terminal_states = self.get_terminal_states()
         # exit()
@@ -185,19 +186,20 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        if state not in self.terminal_states:
-            move_tuple = [(move, probability) for move, probability in self.state_transition_probability[state].items()]
-            best_move, probability = max(move_tuple, key=lambda x: x[1])
-            # max_value = -math.inf
-            # best_move = None
-            # for action in ROBOT_ACTIONS:
-            #     reward, next_state = self.environment.apply_dynamics(state, action)
-            #     value = reward + (self.environment.gamma * self.state_value[next_state])
-            #     if value > max_value:
-            #         max_value = value
-            #         best_move = action
-            return best_move
-        return None
+        # if state not in self.terminal_states:
+        #     move_tuple = [(move, probability) for move, probability in self.state_transition_probability[state].items()]
+        #     best_move, probability = max(move_tuple, key=lambda x: x[1])
+        #     # max_value = -math.inf
+        #     # best_move = None
+        #     # for action in ROBOT_ACTIONS:
+        #     #     reward, next_state = self.environment.apply_dynamics(state, action)
+        #     #     value = reward + (self.environment.gamma * self.state_value[next_state])
+        #     #     if value > max_value:
+        #     #         max_value = value
+        #     #         best_move = action
+        #     return best_move
+        # return None
+        return self.policy[state]
 
     # === Helper Methods ===============================================================================================
     #
@@ -210,10 +212,12 @@ class Solver:
             # values = list()
             value = 0.0
             for action in ROBOT_ACTIONS:
-                reward, next_state = self.environment.apply_dynamics(state, action)
-                value += reward + (self.environment.gamma *
-                                   self.state_value[next_state] *
-                                   self.state_transition_probability[state][action])
+                for possible_next_state in self.state_transition_probability[state][action]:
+                    # reward, next_state = self.environment.apply_dynamics(state, action)
+                    value += self.state_rewards.get(possible_next_state, -1) + \
+                             (self.environment.gamma *
+                              self.state_value[possible_next_state] *
+                              self.state_transition_probability[state][action][possible_next_state])
 
                 # values.append(value)
             # return max(values)
@@ -232,7 +236,14 @@ class Solver:
     def pi_improvise(self):
         for state in self.possible_states:
             if state not in self.terminal_states:
-                self.new_policy[state] = self.pi_select_action(state)
+                self.new_policy[state] = self.pi_select_best_move_from_state_values(state)
+
+    def pi_select_best_move_from_state_values(self, state):
+        formula = lambda s, action: max(self.state_transition_probability[s][action][next_state] *
+                                        (self.state_rewards[next_state] +
+                                         (self.environment.gamma * self.state_value[next_state]))
+                                        for next_state in self.possible_states)
+        return max(ROBOT_ACTIONS, key=lambda x: formula(state, x))
 
     def get_all_states(self) -> List[State]:
         """
@@ -253,6 +264,7 @@ class Solver:
 
                 if next_state not in states:
                     states.add(next_state)
+                    self.state_rewards[next_state] = reward
                     fringe.add(next_state)
 
         # for state in states:
@@ -264,11 +276,8 @@ class Solver:
 
     def calculate_state_transition_probabilities(self):
         for state in self.possible_states:
-            self.state_transition_probability[state] = dict()
+            self.state_transition_probability[state] = defaultdict(lambda: 0.0)
             for action in ROBOT_ACTIONS:
-
-                action_outcome_probability = dict()
-
                 total_probability = 1.0
                 probability_double_move = self.environment.double_move_probs[action]
                 probability_cw = self.environment.drift_cw_probs[action]
