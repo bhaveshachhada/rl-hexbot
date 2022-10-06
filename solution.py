@@ -30,10 +30,10 @@ class Solver:
         #
         self.policy: Dict[State, int] = None
         self.new_policy = None
-        self.state_value: Dict[State, float] = None
-        self.new_state_value: Dict[State, float] = None
-        self.state_transition_probability = None
-        self.state_rewards = None
+        self.state_value: Dict[State, float] = defaultdict(lambda: 0.0)
+        self.new_state_value: Dict[State, float] = defaultdict(lambda: 0.0)
+        self.state_transition_probability = dict()
+        self.state_rewards = defaultdict(lambda: 0.0)
         self.possible_states = self.get_all_states()
         self.terminal_states = self.get_terminal_states()
         # exit()
@@ -160,6 +160,7 @@ class Solver:
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
         self.policy = self.new_policy
+        self.state_value = self.new_state_value
         self.pi_evaluate()
         self.pi_improvise()
 
@@ -239,7 +240,7 @@ class Solver:
                 self.new_policy[state] = self.pi_select_best_move_from_state_values(state)
 
     def pi_select_best_move_from_state_values(self, state):
-        formula = lambda s, action: max(self.state_transition_probability[s][action][next_state] *
+        formula = lambda s, action: sum(self.state_transition_probability[s][action][next_state] *
                                         (self.state_rewards[next_state] +
                                          (self.environment.gamma * self.state_value[next_state]))
                                         for next_state in self.possible_states)
@@ -276,8 +277,11 @@ class Solver:
 
     def calculate_state_transition_probabilities(self):
         for state in self.possible_states:
-            self.state_transition_probability[state] = defaultdict(lambda: 0.0)
+            self.state_transition_probability[state] = dict()
             for action in ROBOT_ACTIONS:
+
+                self.state_transition_probability[state][action] = defaultdict(lambda: 0.0)
+
                 total_probability = 1.0
                 probability_double_move = self.environment.double_move_probs[action]
                 probability_cw = self.environment.drift_cw_probs[action]
