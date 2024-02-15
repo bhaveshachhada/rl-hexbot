@@ -224,7 +224,10 @@ def run_test_mp(filename_i_vis):
 
                 # run an iteration
                 try:
+                    start_time = time.time()
                     solver.vi_iteration()
+                    end_time = time.time()
+                    print(f'Iter: {iterations}, time: {round(end_time - start_time, 2)}, delta: {solver.delta}')
                 except BaseException as e:
                     msg1 = f'/!\\ Program crashed in solver.vi_iteration() on testcase {i}'
                     msg2 = f'\nTestcase total score: 0.0 / {POINTS_PER_TESTCASE}'
@@ -238,7 +241,7 @@ def run_test_mp(filename_i_vis):
                     return test_result, None
 
                 iterations += 1
-
+            # print(f'state-values: {solver.state_value.values()}')
             # check for convergence
             for vs in val_states:
                 try:
@@ -302,7 +305,10 @@ def run_test_mp(filename_i_vis):
 
                 # run an iteration
                 try:
+                    start_time = time.time()
                     solver.pi_iteration()
+                    end_time = time.time()
+                    print(f'Iter: {iterations}, time: {round(end_time - start_time, 2)}, delta: {solver.delta}')
                 except BaseException as e:
                     msg1 = f'/!\\ Program crashed in solver.pi_iteration() on testcase {i}'
                     msg2 = f'\nTestcase total score: 0.0 / {POINTS_PER_TESTCASE}'
