@@ -27,12 +27,13 @@ class Solver:
         # TODO: Define any class instance variables you require (e.g. dictionary mapping state to VI value) here.
         #
         self.state_value: Dict[State, float] = None
-        self.vi_delta = 0.0
-        self.vi_delta_threshold = self.environment.epsilon * 0.2
-        self.vi_policy: Dict[State, int] = defaultdict(lambda: 0)
+        self.delta = 0.0
+        self.delta_threshold = self.environment.epsilon * 0.2
+        self.policy: Dict[State, int] = defaultdict(lambda: 0)
         self.state_action: Dict[State, int] = defaultdict(None)
         self.possible_states: List[State] = None
         self.terminal_states: List[State] = None
+        self.policy_stable: bool = False
 
         # probability = transitions[s][a][s_prime]
         self.transitions: Dict[State, Dict[int, Dict[State, ProbAndReward[float, float]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: (0, 0))))
@@ -53,8 +54,8 @@ class Solver:
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
         self.state_value: Dict[State, float] = defaultdict(lambda: random.random())
-        self.vi_delta = math.inf
-        self.vi_delta_threshold = self.environment.epsilon * 0.2
+        self.delta = math.inf
+        self.delta_threshold = self.environment.epsilon * 0.2
         self.state_action: Dict[State, int] = defaultdict(None)
         self.transitions: Dict[State, Dict[int, Dict[State, float]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: 0.0)))
 
@@ -81,7 +82,7 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        return self.vi_delta < self.vi_delta_threshold
+        return self.delta < self.delta_threshold
 
     def vi_iteration(self):
         """
@@ -103,23 +104,20 @@ class Solver:
 
             optimal_action = None
             for action in ROBOT_ACTIONS:
-                total = 0
-                for s_prime in self.transitions[state][action].keys():
-                    prob_and_reward = self.transitions[state][action][s_prime]
-                    total += prob_and_reward.prob * (prob_and_reward.reward + (self.state_value[s_prime]))
+                total = self.bellman_equation(state, action)
 
                 if total > new_value:
                     new_value = total
                     optimal_action = action
 
             if optimal_action is not None:
-                self.vi_policy[state] = optimal_action
+                self.policy[state] = optimal_action
 
             self.state_value[state] = new_value
 
             delta = max(delta, abs(new_value - old_value))
 
-        self.vi_delta = delta
+        self.delta = delta
 
     def vi_plan_offline(self):
         """
@@ -155,7 +153,7 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        return self.vi_policy[state]
+        return self.policy[state]
 
     # === Policy Iteration =============================================================================================
 
@@ -169,7 +167,25 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        self.state_value: Dict[State, float] = defaultdict(lambda: random.random())
+        self.delta = math.inf
+        self.delta_threshold = 1.5  # self.environment.epsilon * 0.2
+        self.state_action: Dict[State, int] = defaultdict(None)
+        self.transitions: Dict[State, Dict[int, Dict[State, float]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(lambda: 0.0)))
+        self.policy_stable: bool = False
+        self.policy: Dict[State, int] = defaultdict(lambda: random.choice(range(len(ROBOT_ACTIONS))))
+
+        self.get_all_states_and_transition_probabilities()
+        self.terminal_states = {state for state in self.possible_states if self.environment.is_solved(state)}
+
+        # TODO: For some strange reason, keeping state-value of terminal states 50 helps converge faster.
+        for state in self.terminal_states:
+            self.state_value[state] = 50
+
+        print(f'=============================================================================================')
+        print(f'Total states: {len(self.possible_states)}, terminal states: {len(self.terminal_states)}')
+        print(f'=============================================================================================')
 
     def pi_is_converged(self):
         """
@@ -181,7 +197,7 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        return self.policy_stable
 
     def pi_iteration(self):
         """
@@ -193,7 +209,8 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        self.policy_evaluate()
+        self.policy_improve()
 
     def pi_plan_offline(self):
         """
@@ -215,7 +232,7 @@ class Solver:
         #
         # In order to ensure compatibility with tester, you should avoid adding additional arguments to this function.
         #
-        pass
+        return self.policy[state]
 
     # === Helper Methods ===============================================================================================
     #
@@ -223,6 +240,49 @@ class Solver:
     # TODO: Add any additional methods here
     #
     #
+    def bellman_equation(self, state, action):
+        value = 0
+        for s_prime in self.transitions[state][action].keys():
+            prob_and_reward = self.transitions[state][action][s_prime]
+            value += prob_and_reward.prob * (prob_and_reward.reward + (self.environment.gamma * self.state_value[s_prime]))
+        return value
+
+    def policy_evaluate(self):
+        delta = math.inf
+        while delta > self.delta_threshold:
+            delta = 0
+            for state in self.possible_states:
+                if state in self.terminal_states:
+                    continue
+                else:
+                    old_value = self.state_value[state]
+                    action = self.policy[state]
+                    new_value = self.bellman_equation(state, action)
+                    self.state_value[state] = new_value
+                    delta = max(delta, abs(new_value - old_value))
+
+        self.delta = delta
+
+    def policy_improve(self):
+        stable = True
+        for state in self.possible_states:
+            if state in self.terminal_states:
+                continue
+            else:
+                old_action = self.policy[state]
+                value = -math.inf
+                optimal_action = 0
+                for action in ROBOT_ACTIONS:
+                    total = self.bellman_equation(state, action)
+
+                    if total > value:
+                        value = total
+                        optimal_action = action
+                self.policy[state] = optimal_action
+                if optimal_action != old_action:
+                    stable = False
+        self.policy_stable = stable
+
     def get_all_states_and_transition_probabilities(self) -> List[State]:
         """
         Returns list of all possible states
