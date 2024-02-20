@@ -56,6 +56,6 @@ We consider this problem as a markov decision process and use the value iteratio
 an optimal policy.
 
 ### Demo:
-<video width="640" height="480" controls>
-  <source src="docs/output.mp4" type="video/mp4">
-</video>
+
+https://github.com/bhaveshachhada/rl-hexbot/assets/50368853/ba3f002e-a90f-4889-9f29-2758bf928826
+
